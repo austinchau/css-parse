@@ -1,10 +1,6 @@
-// http://www.w3.org/TR/CSS21/grammar.html
-// https://github.com/visionmedia/css-parse/pull/49#issuecomment-30088027
-var commentre = /\/\*[^*]*\*+([^/*][^*]*\*+)*\//g
 
 module.exports = function(css, options){
   options = options || {};
-  options.position = options.position === false ? false : true;
 
   /**
    * Positional.
@@ -33,27 +29,16 @@ module.exports = function(css, options){
     if (!options.position) return positionNoop;
 
     return function(node){
-      node.position = new Position(start);
+      node.position = {
+        start: start,
+        end: { line: lineno, column: column },
+        source: options.source
+      };
+
       whitespace();
       return node;
-    };
+    }
   }
-
-  /**
-   * Store position information for a node
-   */
-
-  function Position(start) {
-    this.start = start;
-    this.end = { line: lineno, column: column };
-    this.source = options.source;
-  }
-
-  /**
-   * Non-enumerable source string
-   */
-
-  Position.prototype.content = css;
 
   /**
    * Return `node`.
@@ -75,6 +60,7 @@ module.exports = function(css, options){
     err.column = column;
     err.source = css;
     throw err;
+    // console.log(err);
   }
 
   /**
@@ -115,7 +101,7 @@ module.exports = function(css, options){
     var rules = [];
     whitespace();
     comments(rules);
-    while (css.length && css.charAt(0) != '}' && (node = atrule() || rule())) {
+    while (css.charAt(0) != '}' && (node = atrule() || rule())) {
       rules.push(node);
       comments(rules);
     }
@@ -163,12 +149,8 @@ module.exports = function(css, options){
     if ('/' != css.charAt(0) || '*' != css.charAt(1)) return;
 
     var i = 2;
-    while ("" != css.charAt(i) && ('*' != css.charAt(i) || '/' != css.charAt(i + 1))) ++i;
+    while (null != css.charAt(i) && ('*' != css.charAt(i) || '/' != css.charAt(i + 1))) ++i;
     i += 2;
-
-    if ("" === css.charAt(i-1)) {
-      return error('End of comment missing');
-    }
 
     var str = css.slice(2, i - 2);
     column += 2;
@@ -189,9 +171,7 @@ module.exports = function(css, options){
   function selector() {
     var m = match(/^([^{]+)/);
     if (!m) return;
-    /* @fix Remove all comments from selectors 
-     * http://ostermiller.org/findcomment.html */
-    return trim(m[0]).replace(/\/\*([^*]|[\r\n]|(\*+([^*/]|[\r\n])))*\*\/+/g, '').split(/\s*,\s*/);
+    return trim(m[0]).split(/\s*,\s*/);
   }
 
   /**
@@ -201,12 +181,12 @@ module.exports = function(css, options){
   function declaration() {
     var pos = position();
 
-    // prop
-    var prop = match(/^(\*?[-#\/\*\w]+(\[[0-9a-z_-]+\])?)\s*/);
+    // prop /* AUSTIN HACK */
+    // var prop = match(/^(\*?\.*[-#\/\*\w]+(\[[0-9a-z_-]+\])?)\s*/);
+    var prop = match(/^(\*?[-\.#\/\* \w]+(\[[0-9a-z_-]+\])?)\s*/);
     if (!prop) return;
     prop = trim(prop[0]);
-
-    // :
+    // : /* AUSTIN HACK! */
     if (!match(/^:\s*/)) return error("property missing ':'");
 
     // val
@@ -215,8 +195,8 @@ module.exports = function(css, options){
 
     var ret = pos({
       type: 'declaration',
-      property: prop.replace(commentre, ''),
-      value: trim(val[0]).replace(commentre, '')
+      property: prop,
+      value: trim(val[0])
     });
 
     // ;
@@ -434,35 +414,37 @@ module.exports = function(css, options){
    * Parse import
    */
 
-  var atimport = _compileAtrule('import');
+  function atimport() {
+    return _atrule('import');
+  }
 
   /**
    * Parse charset
    */
 
-  var atcharset = _compileAtrule('charset');
+  function atcharset() {
+    return _atrule('charset');
+  }
 
   /**
    * Parse namespace
    */
 
-  var atnamespace = _compileAtrule('namespace');
+  function atnamespace() {
+    return _atrule('namespace')
+  }
 
   /**
    * Parse non-block at-rules
    */
 
-
-  function _compileAtrule(name) {
-    var re = new RegExp('^@' + name + ' *([^;\\n]+);');
-    return function() {
-      var pos = position();
-      var m = match(re);
-      if (!m) return;
-      var ret = { type: name };
-      ret[name] = m[1].trim();
-      return pos(ret);
-    }
+  function _atrule(name) {
+    var pos = position();
+    var m = match(new RegExp('^@' + name + ' *([^;\\n]+);'));
+    if (!m) return;
+    var ret = { type: name };
+    ret[name] = trim(m[1]);
+    return pos(ret);
   }
 
   /**
@@ -491,7 +473,7 @@ module.exports = function(css, options){
     var pos = position();
     var sel = selector();
 
-    if (!sel) return error('selector missing');
+    if (!sel) return;
     comments();
 
     return pos({
