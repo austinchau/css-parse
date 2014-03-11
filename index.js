@@ -191,7 +191,8 @@ module.exports = function(css, options){
 
     // val
     var val = match(/^((?:'(?:\\'|.)*?'|"(?:\\"|.)*?"|\([^\)]*?\)|[^};])+)/);
-    if (!val) return error('property missing value');
+    // if (!val) return error('property missing value');
+    if (!val) val = '';
 
     var ret = pos({
       type: 'declaration',
