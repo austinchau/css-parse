@@ -188,6 +188,9 @@ module.exports = function(css, options){
     prop = trim(prop[0]);
     // : /* AUSTIN HACK! */
     // if (!match(/^:\s*/)) return error("property missing ':'");
+    if (!match(/^:\s*/)) {
+      match(/^\s*/)
+    }
 
     // val
     var val = match(/^((?:'(?:\\'|.)*?'|"(?:\\"|.)*?"|\([^\)]*?\)|[^};])+)/);
