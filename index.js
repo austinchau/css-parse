@@ -187,7 +187,7 @@ module.exports = function(css, options){
     if (!prop) return;
     prop = trim(prop[0]);
     // : /* AUSTIN HACK! */
-    if (!match(/^:\s*/)) return error("property missing ':'");
+    // if (!match(/^:\s*/)) return error("property missing ':'");
 
     // val
     var val = match(/^((?:'(?:\\'|.)*?'|"(?:\\"|.)*?"|\([^\)]*?\)|[^};])+)/);
