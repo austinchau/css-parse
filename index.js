@@ -226,7 +226,10 @@ module.exports = function(css, options){
       comments(decls);
     }
 
-    if (!close()) return error("missing '}'");
+    if (!close()) {
+      css += '}';
+      if (!close()) return error("missing '}'");
+    }
     return decls;
   }
 
